@@ -62,6 +62,7 @@ from elasticluster.validate import (
     hostname,
     nonempty_str,
     nova_api_version,
+    identity_api_version,
     readable_file,
     url,
 )
@@ -178,6 +179,8 @@ CLOUD_PROVIDER_SCHEMAS = {
         Optional("auth_url", default=os.getenv('OS_AUTH_URL', '')): url,
         Optional("username", default=os.getenv('OS_USERNAME', '')): nonempty_str,
         Optional("password", default=os.getenv('OS_PASSWORD', '')): nonempty_str,
+        Optional("user_domain_name", default=os.getenv('OS_USER_DOMAIN_NAME', '')): nonempty_str,
+        Optional("project_domain_name", default=os.getenv('OS_PROJECT_DOMAIN_NAME', '')): nonempty_str,
         Optional("project_name",
                  # if OS_PROJECT_NAME is not defined,
                  # try legacy variable OS_TENANT_NAME as a fallback
@@ -186,6 +189,7 @@ CLOUD_PROVIDER_SCHEMAS = {
         Optional("request_floating_ip"): boolean,
         Optional("region_name"): nonempty_str,
         Optional("nova_api_version"): nova_api_version,
+        Optional("identity_api_version"): identity_api_version
     },
 }
 

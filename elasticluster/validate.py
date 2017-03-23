@@ -127,6 +127,16 @@ def nova_api_version(version):
 
 
 @validator
+def identity_api_version(version):
+    valid_versions = ['2', '3']
+    if version in valid_versions:
+        return version
+    else:
+        raise ValueError(
+            "Unsupported Keystone API version: " + version)
+
+
+@validator
 def url(value):
     try:
         url_str = str(value)

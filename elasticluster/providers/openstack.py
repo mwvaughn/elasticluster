@@ -26,6 +26,7 @@ __author__ = 'Antonio Messina <antonio.s.messina@gmail.com>'
 # System imports
 import os
 import threading
+import jsonpickle
 from warnings import warn
 
 # External modules
@@ -51,6 +52,8 @@ from elasticluster.exceptions import (
 )
 
 DEFAULT_OS_NOVA_API_VERSION = "2"
+DEFAULT_OS_IDENTITY_API_VERSION = "3"
+
 
 class OpenStackCloudProvider(AbstractCloudProvider):
     """
@@ -72,25 +75,42 @@ class OpenStackCloudProvider(AbstractCloudProvider):
     """
     __node_start_lock = threading.Lock()  # lock used for node startup
 
-    def __init__(self, username, password, project_name, auth_url,
+    def __init__(self, username, password, project_name,
+                 auth_url, user_domain_name, project_domain_name,
                  region_name=None, storage_path=None,
                  request_floating_ip=False,
-                 nova_api_version=DEFAULT_OS_NOVA_API_VERSION):
+                 nova_api_version=DEFAULT_OS_NOVA_API_VERSION,
+                 identity_api_version=DEFAULT_OS_IDENTITY_API_VERSION):
         self._os_auth_url = os.getenv('OS_AUTH_URL', auth_url)
         self._os_username = os.getenv('OS_USERNAME', username)
         self._os_password = os.getenv('OS_PASSWORD', password)
         self._os_tenant_name = os.getenv('OS_TENANT_NAME', project_name)
+        self._os_project_domain_name = os.getenv('OS_PROJECT_DOMAIN_NAME',
+                                                 project_domain_name)
+        self._os_user_domain_name = os.getenv('OS_USER_DOMAIN_NAME',
+                                              user_domain_name)
         self._os_region_name = region_name
         self.request_floating_ip = request_floating_ip
         self.nova_api_version = nova_api_version
+        self.identity_api_version = identity_api_version
         self._instances = {}
         self._cached_instances = {}
 
-        loader = loading.get_plugin_loader('password')
-        auth = loader.load_from_options(auth_url=self._os_auth_url,
-                                        username=self._os_username,
-                                        password=self._os_password,
-                                        project_name=self._os_tenant_name)
+        if identity_api_version == '2':
+            loader = loading.get_plugin_loader('password')
+            auth = loader.load_from_options(auth_url=self._os_auth_url,
+                                            username=self._os_username,
+                                            password=self._os_password,
+                                            project_name=self._os_tenant_name)
+        elif identity_api_version == '3':
+            loader = loading.get_plugin_loader('v3password')
+            auth = loader.load_from_options(auth_url=self._os_auth_url,
+                                            username=self._os_username,
+                                            password=self._os_password,
+                                            project_name=self._os_tenant_name,
+                                            project_domain_name=self._os_project_domain_name,
+                                            user_domain_name=self._os_user_domain_name)
+
         sess = session.Session(auth=auth)
         self.client = client.Client(self.nova_api_version, session=sess)
 
@@ -382,6 +402,8 @@ class OpenStackCloudProvider(AbstractCloudProvider):
                 'username': self._os_username,
                 'password': self._os_password,
                 'project_name': self._os_tenant_name,
+                'project_domain_name': self._os_project_domain_name,
+                'user_domain_name': self._os_user_domain_name,
                 'region_name': self._os_region_name,
                 'request_floating_ip': self.request_floating_ip,
                 'instance_ids': self._instances.keys(),
@@ -392,7 +414,9 @@ class OpenStackCloudProvider(AbstractCloudProvider):
         self._os_auth_url = state['auth_url']
         self._os_username = state['username']
         self._os_password = state['password']
+        self._os_project_domain_name = state['project_domain_name']
         self._os_tenant_name = state['project_name']
+        self._os_user_domain_name = state['user_domain_name']
         self._os_region_name = state['region_name']
         self.request_floating_ip = state['request_floating_ip']
         self.nova_api_version = state.get('nova_api_version', DEFAULT_OS_NOVA_API_VERSION)
